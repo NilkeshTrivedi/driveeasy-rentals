@@ -57,6 +57,7 @@ public class ConsoleApp {
         System.out.println("1. Add Car");
         System.out.println("2. Update Car Price");
         System.out.println("3. Mark Car Under Maintenance");
+        System.out.println("4. Mark Car Available");
         System.out.print("Choice: ");
 
         int choice = Integer.parseInt(scanner.nextLine());
@@ -66,6 +67,7 @@ public class ConsoleApp {
                 case 1 -> addCar();
                 case 2 -> updateCarPrice();
                 case 3 -> markMaintenance();
+                case 4 -> markAvailable();
                 default -> System.out.println("Invalid option");
             }
         } catch (RuntimeException e) {
@@ -110,6 +112,15 @@ public class ConsoleApp {
         carService.markUnderMaintenance(id);
         System.out.println("Car marked under maintenance");
     }
+
+    private static void markAvailable() {
+        System.out.print("Car ID: ");
+        long id = Long.parseLong(scanner.nextLine());
+
+        carService.markAvailable(id);
+        System.out.println("Car marked as available");
+    }
+
 
     // ================= STAFF MENU =================
 

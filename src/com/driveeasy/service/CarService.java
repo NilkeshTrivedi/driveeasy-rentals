@@ -3,6 +3,7 @@ package com.driveeasy.service;
 import com.driveeasy.dao.CarDao;
 import com.driveeasy.dao.impl.CarDaoImpl;
 import com.driveeasy.exception.ResourceNotFoundException;
+import com.driveeasy.exception.ValidationException;
 import com.driveeasy.model.Car;
 import com.driveeasy.model.enums.CarCategory;
 
@@ -34,6 +35,16 @@ public class CarService {
 
     public void markUnderMaintenance(long carId) {
         carDao.setCarMaintenance(carId, true);
+    }
+
+    public void markAvailable(long carId){
+        Car car = carDao.getCarById(carId)
+            .orElseThrow(() -> new ResourceNotFoundException("Car not found"));
+
+        if(!car.isUnderMaintenance()){
+            throw new ValidationException("Car is already available");
+        }
+        carDao.setCarMaintenance(carId, false);
     }
 
     public List<Car> searchByCategory(CarCategory category) {
