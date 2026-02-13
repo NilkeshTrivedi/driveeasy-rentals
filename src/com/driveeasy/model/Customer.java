@@ -1,11 +1,30 @@
 package com.driveeasy.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "customer")
 public class Customer {
 
-    private final long id;
+    @Id
+    @Column(name = "id")
+    private long id;
+
+    @Column(name = "name", nullable = false)
     private String name;
+
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
+
+    @Column(name = "phone", nullable = false, unique = true)
     private String phone;
+
+    protected Customer() {
+        // JPA only
+    }
 
     public Customer(long id, String name, String email, String phone) {
         this.id = id;

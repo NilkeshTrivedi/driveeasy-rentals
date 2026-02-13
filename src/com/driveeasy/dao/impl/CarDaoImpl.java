@@ -15,15 +15,18 @@ public class CarDaoImpl implements CarDao {
 
     @Override
     public void addCar(Car car) {
-        String sql = "INSERT INTO car (id, model, category, daily_rate, under_maintenance) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO car (id, model, category, base_fare, per_km_rate, per_hour_rate, under_maintenance) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DbConnectionManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setLong(1, car.getId());
             ps.setString(2, car.getModel());
             ps.setString(3, car.getCategory().name());
-            ps.setDouble(4, car.getDailyRate());
-            ps.setBoolean(5, car.isUnderMaintenance());
+            ps.setDouble(4, car.getBaseFare());
+            ps.setDouble(5, car.getPerKmRate());
+            ps.setDouble(6, car.getPerHourRate());
+            ps.setBoolean(7, car.isUnderMaintenance());
             ps.executeUpdate();
 
         } catch (SQLException e) {
@@ -33,15 +36,17 @@ public class CarDaoImpl implements CarDao {
 
     @Override
     public void updateCar(Car car) {
-        String sql = "UPDATE car SET model=?, category=?, daily_rate=?, under_maintenance=? WHERE id=?";
+        String sql = "UPDATE car SET model=?, category=?, base_fare=?, per_km_rate=?, per_hour_rate=?, under_maintenance=? WHERE id=?";
         try (Connection conn = DbConnectionManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, car.getModel());
             ps.setString(2, car.getCategory().name());
-            ps.setDouble(3, car.getDailyRate());
-            ps.setBoolean(4, car.isUnderMaintenance());
-            ps.setLong(5, car.getId());
+            ps.setDouble(3, car.getBaseFare());
+            ps.setDouble(4, car.getPerKmRate());
+            ps.setDouble(5, car.getPerHourRate());
+            ps.setBoolean(6, car.isUnderMaintenance());
+            ps.setLong(7, car.getId());
             ps.executeUpdate();
 
         } catch (SQLException e) {
@@ -121,7 +126,8 @@ public class CarDaoImpl implements CarDao {
     @Override
     public List<Car> getCarsByPriceRange(double minPrice, double maxPrice) {
         List<Car> cars = new ArrayList<>();
-        String sql = "SELECT * FROM car WHERE daily_rate BETWEEN ? AND ?";
+        // For Phase 1, interpret price range as base fare range.
+        String sql = "SELECT * FROM car WHERE base_fare BETWEEN ? AND ?";
         try (Connection conn = DbConnectionManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -164,7 +170,9 @@ public class CarDaoImpl implements CarDao {
                 rs.getLong("id"),
                 rs.getString("model"),
                 CarCategory.valueOf(rs.getString("category")),
-                rs.getDouble("daily_rate"),
+                rs.getDouble("base_fare"),
+                rs.getDouble("per_km_rate"),
+                rs.getDouble("per_hour_rate"),
                 rs.getBoolean("under_maintenance")
         );
     }

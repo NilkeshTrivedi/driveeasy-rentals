@@ -85,10 +85,16 @@ public class ConsoleApp {
         System.out.print("Category (ECONOMY/SEDAN/SUV/LUXURY): ");
         CarCategory category = CarCategory.valueOf(scanner.nextLine().toUpperCase());
 
-        System.out.print("Daily Rate: ");
-        double rate = Double.parseDouble(scanner.nextLine());
+        System.out.print("Base Fare: ");
+        double baseFare = Double.parseDouble(scanner.nextLine());
 
-        Car car = new Car(id, model, category, rate, false);
+        System.out.print("Per Km Rate: ");
+        double perKmRate = Double.parseDouble(scanner.nextLine());
+
+        System.out.print("Per Hour Rate: ");
+        double perHourRate = Double.parseDouble(scanner.nextLine());
+
+        Car car = new Car(id, model, category, baseFare, perKmRate, perHourRate, false);
         carService.addCar(car);
 
         System.out.println("Car added successfully");
@@ -98,11 +104,17 @@ public class ConsoleApp {
         System.out.print("Car ID: ");
         long id = Long.parseLong(scanner.nextLine());
 
-        System.out.print("New Price: ");
-        double price = Double.parseDouble(scanner.nextLine());
+        System.out.print("New Base Fare: ");
+        double baseFare = Double.parseDouble(scanner.nextLine());
 
-        carService.updateCarPrice(id, price);
-        System.out.println("Price updated");
+        System.out.print("New Per Km Rate: ");
+        double perKmRate = Double.parseDouble(scanner.nextLine());
+
+        System.out.print("New Per Hour Rate: ");
+        double perHourRate = Double.parseDouble(scanner.nextLine());
+
+        carService.updateCarPricing(id, baseFare, perKmRate, perHourRate);
+        System.out.println("Car pricing updated");
     }
 
     private static void markMaintenance() {
@@ -182,12 +194,20 @@ public class ConsoleApp {
         System.out.print("End Date (YYYY-MM-DD): ");
         LocalDate end = LocalDate.parse(scanner.nextLine());
 
+        System.out.print("Estimated Total Distance (km): ");
+        double totalDistanceKm = Double.parseDouble(scanner.nextLine());
+
+        System.out.print("Estimated Duration (hours): ");
+        double durationHours = Double.parseDouble(scanner.nextLine());
+
         Reservation reservation = new Reservation(
                 resId,
                 carId,
                 custId,
                 start,
                 end,
+                totalDistanceKm,
+                durationHours,
                 0.0,
                 null
         );
@@ -221,7 +241,9 @@ public class ConsoleApp {
                             c.getId() + " | " +
                                     c.getModel() + " | " +
                                     c.getCategory() + " | ₹" +
-                                    c.getDailyRate()
+                                    "Base: " + c.getBaseFare() +
+                                    ", Per Km: " + c.getPerKmRate() +
+                                    ", Per Hour: " + c.getPerHourRate()
                     )
             );
         }

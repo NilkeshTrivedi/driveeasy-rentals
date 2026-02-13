@@ -15,8 +15,8 @@ public class ReservationDaoImpl implements ReservationDao {
 
     @Override
     public void addReservation(Reservation reservation) {
-        String sql = "INSERT INTO reservation (id, car_id, customer_id, start_date, end_date, total_price, status) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO reservation (id, car_id, customer_id, start_date, end_date, total_distance_km, duration_hours, calculated_fare, status) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DbConnectionManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -25,8 +25,10 @@ public class ReservationDaoImpl implements ReservationDao {
             ps.setLong(3, reservation.getCustomerId());
             ps.setDate(4, Date.valueOf(reservation.getStartDate()));
             ps.setDate(5, Date.valueOf(reservation.getEndDate()));
-            ps.setDouble(6, reservation.getTotalPrice());
-            ps.setString(7, reservation.getStatus().name());
+            ps.setDouble(6, reservation.getTotalDistanceKm());
+            ps.setDouble(7, reservation.getDurationHours());
+            ps.setDouble(8, reservation.getCalculatedFare());
+            ps.setString(9, reservation.getStatus().name());
             ps.executeUpdate();
 
         } catch (SQLException e) {
@@ -36,7 +38,7 @@ public class ReservationDaoImpl implements ReservationDao {
 
     @Override
     public void updateReservation(Reservation reservation) {
-        String sql = "UPDATE reservation SET car_id=?, customer_id=?, start_date=?, end_date=?, total_price=?, status=? WHERE id=?";
+        String sql = "UPDATE reservation SET car_id=?, customer_id=?, start_date=?, end_date=?, total_distance_km=?, duration_hours=?, calculated_fare=?, status=? WHERE id=?";
         try (Connection conn = DbConnectionManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -44,9 +46,11 @@ public class ReservationDaoImpl implements ReservationDao {
             ps.setLong(2, reservation.getCustomerId());
             ps.setDate(3, Date.valueOf(reservation.getStartDate()));
             ps.setDate(4, Date.valueOf(reservation.getEndDate()));
-            ps.setDouble(5, reservation.getTotalPrice());
-            ps.setString(6, reservation.getStatus().name());
-            ps.setLong(7, reservation.getId());
+            ps.setDouble(5, reservation.getTotalDistanceKm());
+            ps.setDouble(6, reservation.getDurationHours());
+            ps.setDouble(7, reservation.getCalculatedFare());
+            ps.setString(8, reservation.getStatus().name());
+            ps.setLong(9, reservation.getId());
             ps.executeUpdate();
 
         } catch (SQLException e) {
@@ -187,7 +191,9 @@ public class ReservationDaoImpl implements ReservationDao {
                 rs.getLong("customer_id"),
                 rs.getDate("start_date").toLocalDate(),
                 rs.getDate("end_date").toLocalDate(),
-                rs.getDouble("total_price"),
+                rs.getDouble("total_distance_km"),
+                rs.getDouble("duration_hours"),
+                rs.getDouble("calculated_fare"),
                 ReservationStatus.valueOf(rs.getString("status"))
         );
     }
