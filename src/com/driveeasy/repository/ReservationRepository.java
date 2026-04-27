@@ -13,9 +13,13 @@ import java.util.List;
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
-    List<Reservation> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
+    // BUG FIX #4: Spring Data derived queries on @ManyToOne fields require underscore
+    // notation to traverse the association. "customerId" resolves to a field named
+    // "customerId" on Reservation — which doesn't exist (the field is "customer").
+    // "customer_Id" correctly traverses customer.id via the JPA association.
+    List<Reservation> findByCustomer_IdOrderByCreatedAtDesc(Long customerId);
 
-    List<Reservation> findByCarIdOrderByCreatedAtDesc(Long carId);
+    List<Reservation> findByCar_IdOrderByCreatedAtDesc(Long carId);
 
     List<Reservation> findByStatus(ReservationStatus status);
 
@@ -37,6 +41,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     /**
      * Revenue report: sum of total fares for ACTIVE and COMPLETED reservations.
+     *
+     * BUG FIX #12: Returns Double (boxed) instead of double (primitive) so that
+     * a null result from Hibernate (before COALESCE takes effect on some dialects)
+     * does not cause a NullPointerException during auto-unboxing.
      */
     @Query("""
             SELECT COALESCE(SUM(r.totalFare), 0.0) FROM Reservation r
@@ -45,5 +53,5 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                 com.driveeasy.model.enums.ReservationStatus.COMPLETED
             )
             """)
-    double getTotalRevenue();
+    Double getTotalRevenue();
 }

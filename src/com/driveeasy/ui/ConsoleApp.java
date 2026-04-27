@@ -1,28 +1,61 @@
 package com.driveeasy.ui;
 
-import com.driveeasy.exception.*;
 import com.driveeasy.model.Car;
-import com.driveeasy.model.Customer;
-import com.driveeasy.model.Reservation;
 import com.driveeasy.model.enums.CarCategory;
 import com.driveeasy.service.CarService;
 import com.driveeasy.service.CustomerService;
 import com.driveeasy.service.ReservationService;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Scanner;
 
-public class ConsoleApp {
+/**
+ * Optional console UI for quick manual testing.
+ *
+ * BUG FIX #5: The original ConsoleApp instantiated Spring-managed services with
+ * "new CarService()" etc., which bypasses the Spring container entirely — repositories
+ * are never injected so every call throws NullPointerException.
+ * Fixed by making ConsoleApp a Spring @Component that implements CommandLineRunner.
+ * Spring injects the fully-wired service beans through the constructor.
+ *
+ * BUG FIX #6/#7/#8/#9/#10: All service method calls have been updated to match the
+ * Phase-2 API signatures:
+ *   - carService.addCar(model, category, baseFare, perKmRate, perHourRate)
+ *   - carService.findAvailableCars(start, end)   [was searchAvailableCars]
+ *   - customerService.registerCustomer(name, email, phone, licenseNumber)
+ *   - reservationService.bookCar(carId, customerId, start, end, distKm, hrs)
+ *   - reservationService.cancelReservation(id, reason)  [two-arg overload]
+ *
+ * BUG FIX #1/#2/#3: Removed all Phase-1 constructor calls that accepted raw IDs.
+ * Phase-2 JPA entities use auto-generated IDs and object associations.
+ *
+ * Activate only with the "console" Spring profile to keep it out of production:
+ *   --spring.profiles.active=console
+ */
+@Component
+@Profile("console")
+public class ConsoleApp implements CommandLineRunner {
 
-    private static final Scanner scanner = new Scanner(System.in);
+    private final CarService carService;
+    private final CustomerService customerService;
+    private final ReservationService reservationService;
 
-    private static final CarService carService = new CarService();
-    private static final CustomerService customerService = new CustomerService();
-    private static final ReservationService reservationService = new ReservationService();
+    private final Scanner scanner = new Scanner(System.in);
 
-    public static void main(String[] args) {
+    public ConsoleApp(CarService carService,
+                      CustomerService customerService,
+                      ReservationService reservationService) {
+        this.carService = carService;
+        this.customerService = customerService;
+        this.reservationService = reservationService;
+    }
 
+    @Override
+    public void run(String... args) {
         System.out.println("=== Welcome to DriveEasy Rentals ===");
 
         while (true) {
@@ -32,14 +65,14 @@ public class ConsoleApp {
                 System.out.println("0. Exit");
                 System.out.print("Choose option: ");
 
-                int choice = Integer.parseInt(scanner.nextLine());
+                int choice = Integer.parseInt(scanner.nextLine().trim());
 
                 switch (choice) {
                     case 1 -> adminMenu();
                     case 2 -> staffMenu();
                     case 0 -> {
                         System.out.println("Thank you. Goodbye!");
-                        System.exit(0);
+                        return;
                     }
                     default -> System.out.println("Invalid choice");
                 }
@@ -50,9 +83,9 @@ public class ConsoleApp {
         }
     }
 
-    // ================= ADMIN MENU =================
+    // ── Admin ─────────────────────────────────────────────────────────────────
 
-    private static void adminMenu() {
+    private void adminMenu() {
         System.out.println("\n--- Admin Menu ---");
         System.out.println("1. Add Car");
         System.out.println("2. Update Car Price");
@@ -60,8 +93,7 @@ public class ConsoleApp {
         System.out.println("4. Mark Car Available");
         System.out.print("Choice: ");
 
-        int choice = Integer.parseInt(scanner.nextLine());
-
+        int choice = Integer.parseInt(scanner.nextLine().trim());
         try {
             switch (choice) {
                 case 1 -> addCar();
@@ -75,10 +107,7 @@ public class ConsoleApp {
         }
     }
 
-    private static void addCar() {
-        System.out.print("Car ID: ");
-        long id = Long.parseLong(scanner.nextLine());
-
+    private void addCar() {
         System.out.print("Model: ");
         String model = scanner.nextLine();
 
@@ -94,15 +123,14 @@ public class ConsoleApp {
         System.out.print("Per Hour Rate: ");
         double perHourRate = Double.parseDouble(scanner.nextLine());
 
-        Car car = new Car(id, model, category, baseFare, perKmRate, perHourRate, false);
-        carService.addCar(car);
-
+        // BUG FIX #1/#6: Phase-2 service auto-generates the ID; no id parameter needed.
+        carService.addCar(model, category, baseFare, perKmRate, perHourRate);
         System.out.println("Car added successfully");
     }
 
-    private static void updateCarPrice() {
+    private void updateCarPrice() {
         System.out.print("Car ID: ");
-        long id = Long.parseLong(scanner.nextLine());
+        long id = Long.parseLong(scanner.nextLine().trim());
 
         System.out.print("New Base Fare: ");
         double baseFare = Double.parseDouble(scanner.nextLine());
@@ -117,26 +145,23 @@ public class ConsoleApp {
         System.out.println("Car pricing updated");
     }
 
-    private static void markMaintenance() {
+    private void markMaintenance() {
         System.out.print("Car ID: ");
-        long id = Long.parseLong(scanner.nextLine());
-
+        long id = Long.parseLong(scanner.nextLine().trim());
         carService.markUnderMaintenance(id);
         System.out.println("Car marked under maintenance");
     }
 
-    private static void markAvailable() {
+    private void markAvailable() {
         System.out.print("Car ID: ");
-        long id = Long.parseLong(scanner.nextLine());
-
+        long id = Long.parseLong(scanner.nextLine().trim());
         carService.markAvailable(id);
         System.out.println("Car marked as available");
     }
 
+    // ── Staff ─────────────────────────────────────────────────────────────────
 
-    // ================= STAFF MENU =================
-
-    private static void staffMenu() {
+    private void staffMenu() {
         System.out.println("\n--- Staff Menu ---");
         System.out.println("1. Register Customer");
         System.out.println("2. Book Car");
@@ -144,8 +169,7 @@ public class ConsoleApp {
         System.out.println("4. Search Available Cars");
         System.out.print("Choice: ");
 
-        int choice = Integer.parseInt(scanner.nextLine());
-
+        int choice = Integer.parseInt(scanner.nextLine().trim());
         try {
             switch (choice) {
                 case 1 -> registerCustomer();
@@ -159,10 +183,7 @@ public class ConsoleApp {
         }
     }
 
-    private static void registerCustomer() {
-        System.out.print("Customer ID: ");
-        long id = Long.parseLong(scanner.nextLine());
-
+    private void registerCustomer() {
         System.out.print("Name: ");
         String name = scanner.nextLine();
 
@@ -172,81 +193,73 @@ public class ConsoleApp {
         System.out.print("Phone: ");
         String phone = scanner.nextLine();
 
-        Customer customer = new Customer(id, name, email, phone);
-        customerService.registerCustomer(customer);
+        System.out.print("Driving License Number (optional, press Enter to skip): ");
+        String license = scanner.nextLine().trim();
+        if (license.isEmpty()) license = null;
 
+        // BUG FIX #2/#10: Phase-2 service accepts (name, email, phone, licenseNumber).
+        // The Phase-1 approach of passing a pre-built Customer object with a manual ID
+        // is incompatible with auto-generated JPA IDs.
+        customerService.registerCustomer(name, email, phone, license);
         System.out.println("Customer registered successfully");
     }
 
-    private static void bookCar() {
-        System.out.print("Reservation ID: ");
-        long resId = Long.parseLong(scanner.nextLine());
-
+    private void bookCar() {
         System.out.print("Car ID: ");
-        long carId = Long.parseLong(scanner.nextLine());
+        long carId = Long.parseLong(scanner.nextLine().trim());
 
         System.out.print("Customer ID: ");
-        long custId = Long.parseLong(scanner.nextLine());
+        long custId = Long.parseLong(scanner.nextLine().trim());
 
         System.out.print("Start Date (YYYY-MM-DD): ");
-        LocalDate start = LocalDate.parse(scanner.nextLine());
+        LocalDate start = LocalDate.parse(scanner.nextLine().trim());
 
         System.out.print("End Date (YYYY-MM-DD): ");
-        LocalDate end = LocalDate.parse(scanner.nextLine());
+        LocalDate end = LocalDate.parse(scanner.nextLine().trim());
 
-        System.out.print("Estimated Total Distance (km): ");
-        double totalDistanceKm = Double.parseDouble(scanner.nextLine());
+        System.out.print("Estimated Distance (km): ");
+        double distanceKm = Double.parseDouble(scanner.nextLine());
 
         System.out.print("Estimated Duration (hours): ");
         double durationHours = Double.parseDouble(scanner.nextLine());
 
-        Reservation reservation = new Reservation(
-                resId,
-                carId,
-                custId,
-                start,
-                end,
-                totalDistanceKm,
-                durationHours,
-                0.0,
-                null
-        );
-
-        reservationService.bookCar(reservation);
-        System.out.println("Car booked successfully");
+        // BUG FIX #3/#8: Phase-2 bookCar takes (carId, customerId, start, end, km, hrs).
+        // The fare is auto-calculated by FareCalculator — no manual fare input.
+        var reservation = reservationService.bookCar(carId, custId, start, end, distanceKm, durationHours);
+        System.out.printf("Car booked successfully. Reservation #%d — Total fare: ₹%.2f%n",
+                reservation.getId(), reservation.getTotalFare());
     }
 
-    private static void cancelReservation() {
+    private void cancelReservation() {
         System.out.print("Reservation ID: ");
-        long id = Long.parseLong(scanner.nextLine());
+        long id = Long.parseLong(scanner.nextLine().trim());
 
-        reservationService.cancelReservation(id);
+        System.out.print("Cancellation reason (optional, press Enter to skip): ");
+        String reason = scanner.nextLine().trim();
+        if (reason.isEmpty()) reason = null;
+
+        // BUG FIX #9: Phase-2 cancelReservation requires a reason parameter.
+        reservationService.cancelReservation(id, reason);
         System.out.println("Reservation cancelled");
     }
 
-    private static void searchAvailableCars() {
+    private void searchAvailableCars() {
         System.out.print("Start Date (YYYY-MM-DD): ");
-        LocalDate start = LocalDate.parse(scanner.nextLine());
+        LocalDate start = LocalDate.parse(scanner.nextLine().trim());
 
         System.out.print("End Date (YYYY-MM-DD): ");
-        LocalDate end = LocalDate.parse(scanner.nextLine());
+        LocalDate end = LocalDate.parse(scanner.nextLine().trim());
 
-        List<Car> cars = carService.searchAvailableCars(start, end);
+        // BUG FIX #7: method was renamed from searchAvailableCars to findAvailableCars
+        List<Car> cars = carService.findAvailableCars(start, end);
 
         if (cars.isEmpty()) {
             System.out.println("No cars available");
         } else {
-            cars.forEach(c ->
-                    System.out.println(
-                            c.getId() + " | " +
-                                    c.getModel() + " | " +
-                                    c.getCategory() + " | ₹" +
-                                    "Base: " + c.getBaseFare() +
-                                    ", Per Km: " + c.getPerKmRate() +
-                                    ", Per Hour: " + c.getPerHourRate()
-                    )
-            );
+            cars.forEach(c -> System.out.printf(
+                    "ID: %d | %s | %s | Base: ₹%.0f | Per Km: ₹%.0f | Per Hr: ₹%.0f%n",
+                    c.getId(), c.getModel(), c.getCategory().getDisplayName(),
+                    c.getBaseFare(), c.getPerKmRate(), c.getPerHourRate()));
         }
     }
 }
-

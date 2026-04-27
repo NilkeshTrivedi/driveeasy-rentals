@@ -14,17 +14,12 @@
         <spring.boot.version>3.2.5</spring.boot.version>
     </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-dependencies</artifactId>
-                <version>${spring.boot.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.5</version>
+        <relativePath/>
+    </parent>
 
     <dependencies>
         <!-- Spring Boot starters -->
@@ -52,7 +47,7 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Lombok (optional, for future use) -->
+        <!-- Lombok (optional) -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -68,16 +63,28 @@
     </dependencies>
 
     <build>
-        <sourceDirectory>src</sourceDirectory>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-            </resource>
-        </resources>
+        <!--
+            BUG FIX #16: Removed the non-standard <sourceDirectory>src</sourceDirectory>.
+            That pointed Maven at the raw src/ root, causing it to compile:
+              - src/Main.java (no package, stale boilerplate)
+              - src/com/driveeasy/dao/**  (Phase-1 JDBC DAOs — dead code)
+              - src/com/driveeasy/ui/ConsoleApp.java (Phase-1 instantiation bugs)
+            Using the standard Maven layout (src/main/java) means only the
+            Phase-2 Spring Boot sources are compiled. Move all live source files
+            to src/main/java/com/driveeasy/... and delete the Phase-1 artifacts.
+        -->
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -90,4 +97,3 @@
         </plugins>
     </build>
 </project>
-

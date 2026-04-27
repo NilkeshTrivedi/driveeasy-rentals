@@ -31,15 +31,21 @@ public class CarController {
         return "admin/cars/add";
     }
 
+    /**
+     * BUG FIX #13: The original code used @RequestParam String model_ which would
+     * look for a request parameter literally named "model_". HTML forms submit the
+     * field as "model". Added explicit @RequestParam("model") to bind correctly.
+     * Renamed the local variable to carModel to avoid shadowing the Model parameter.
+     */
     @PostMapping("/add")
-    public String addCar(@RequestParam String model_,
+    public String addCar(@RequestParam("model") String carModel,
                          @RequestParam CarCategory category,
                          @RequestParam double baseFare,
                          @RequestParam double perKmRate,
                          @RequestParam double perHourRate,
                          RedirectAttributes redirectAttributes,
                          Model model) {
-        Car car = carService.addCar(model_, category, baseFare, perKmRate, perHourRate);
+        Car car = carService.addCar(carModel, category, baseFare, perKmRate, perHourRate);
         redirectAttributes.addFlashAttribute("successMessage",
                 "Car '" + car.getModel() + "' added successfully (ID: " + car.getId() + ")");
         return "redirect:/admin/cars";

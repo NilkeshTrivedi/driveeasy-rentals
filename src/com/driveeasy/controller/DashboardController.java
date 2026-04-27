@@ -25,11 +25,15 @@ public class DashboardController {
 
     @GetMapping("/")
     public String dashboard(Model model) {
-        long totalCars       = carRepository.count();
-        long availableCars   = carRepository.findByUnderMaintenance(false).size();
-        long totalCustomers  = customerRepository.count();
-        long activeBookings  = reservationRepository.findByStatus(ReservationStatus.ACTIVE).size();
-        double totalRevenue  = reservationRepository.getTotalRevenue();
+        long totalCars      = carRepository.count();
+        long availableCars  = carRepository.findByUnderMaintenance(false).size();
+        long totalCustomers = customerRepository.count();
+        long activeBookings = reservationRepository.findByStatus(ReservationStatus.ACTIVE).size();
+
+        // BUG FIX #12: getTotalRevenue() returns Double (boxed); guard against null
+        // before assigning to a primitive double to prevent NullPointerException.
+        Double revenueResult = reservationRepository.getTotalRevenue();
+        double totalRevenue  = revenueResult != null ? revenueResult : 0.0;
 
         model.addAttribute("totalCars", totalCars);
         model.addAttribute("availableCars", availableCars);

@@ -94,8 +94,12 @@ public class ReservationService {
     }
 
     /**
-     * Cancels a reservation. Allowed only if the booking start date is in the future.
+     * Cancels a reservation. Allowed only if the booking has not yet started.
      * Reason is optional but recommended.
+     *
+     * BUG FIX #20: Changed from !startDate.isAfter(now) to startDate.isBefore(now)
+     * so that same-day cancellations are permitted. The old guard blocked any
+     * reservation starting today, which is needlessly restrictive.
      */
     public Reservation cancelReservation(Long reservationId, String cancellationReason) {
         Reservation reservation = findById(reservationId);
@@ -106,7 +110,8 @@ public class ReservationService {
         if (reservation.getStatus() == ReservationStatus.COMPLETED) {
             throw new ValidationException("Cannot cancel a completed reservation");
         }
-        if (!reservation.getStartDate().isAfter(LocalDate.now())) {
+        // BUG FIX #20: only block cancellation if the rental has already started in the past
+        if (reservation.getStartDate().isBefore(LocalDate.now())) {
             throw new ValidationException("Cannot cancel a reservation that has already started");
         }
 
@@ -135,14 +140,15 @@ public class ReservationService {
                         "Reservation not found with id: " + reservationId));
     }
 
+    // BUG FIX #4: Updated to use corrected repository method name (underscore notation)
     @Transactional(readOnly = true)
     public List<Reservation> getReservationsByCustomer(Long customerId) {
-        return reservationRepository.findByCustomerIdOrderByCreatedAtDesc(customerId);
+        return reservationRepository.findByCustomer_IdOrderByCreatedAtDesc(customerId);
     }
 
     @Transactional(readOnly = true)
     public List<Reservation> getReservationsByCar(Long carId) {
-        return reservationRepository.findByCarIdOrderByCreatedAtDesc(carId);
+        return reservationRepository.findByCar_IdOrderByCreatedAtDesc(carId);
     }
 
     @Transactional(readOnly = true)
@@ -152,7 +158,9 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public double getTotalRevenue() {
-        return reservationRepository.getTotalRevenue();
+        // BUG FIX #12: getTotalRevenue() now returns Double; null-safe unwrap with default 0.0
+        Double revenue = reservationRepository.getTotalRevenue();
+        return revenue != null ? revenue : 0.0;
     }
 
     private void validateDates(LocalDate startDate, LocalDate endDate) {
