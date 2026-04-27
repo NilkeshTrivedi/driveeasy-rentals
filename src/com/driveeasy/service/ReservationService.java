@@ -1,167 +1,178 @@
 package com.driveeasy.service;
 
-import com.driveeasy.dao.CarDao;
-import com.driveeasy.dao.ReservationDao;
-import com.driveeasy.dao.impl.CarDaoImpl;
-import com.driveeasy.dao.impl.ReservationDaoImpl;
 import com.driveeasy.exception.BookingConflictException;
 import com.driveeasy.exception.ResourceNotFoundException;
 import com.driveeasy.exception.ValidationException;
 import com.driveeasy.model.Car;
+import com.driveeasy.model.Customer;
 import com.driveeasy.model.Reservation;
+import com.driveeasy.model.dto.FareBreakdown;
 import com.driveeasy.model.enums.ReservationStatus;
-import com.driveeasy.repository.CarRepository;
 import com.driveeasy.repository.ReservationRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@Transactional
 public class ReservationService {
 
-    private final ReservationDao reservationDao;
-    private final CarDao carDao;
+    private final ReservationRepository reservationRepository;
+    private final CarService carService;
+    private final CustomerService customerService;
     private final FareCalculator fareCalculator;
 
-    private final ReservationRepository reservationRepository;
-    private final CarRepository carRepository;
-
-    /**
-     * Default constructor for console-based Phase 1 usage.
-     * Uses concrete DAO implementations and a default FareCalculator.
-     */
-    public ReservationService() {
-        this.reservationDao = new ReservationDaoImpl();
-        this.carDao = new CarDaoImpl();
-        this.fareCalculator = new FareCalculator();
-        this.reservationRepository = null;
-        this.carRepository = null;
-    }
-
-    /**
-     * Spring-managed constructor using JPA repositories.
-     */
     public ReservationService(ReservationRepository reservationRepository,
-                              CarRepository carRepository,
+                              CarService carService,
+                              CustomerService customerService,
                               FareCalculator fareCalculator) {
         this.reservationRepository = reservationRepository;
-        this.carRepository = carRepository;
+        this.carService = carService;
+        this.customerService = customerService;
         this.fareCalculator = fareCalculator;
-        this.reservationDao = null;
-        this.carDao = null;
     }
 
-    public void bookCar(Reservation reservation) {
+    /**
+     * Previews the fare for a potential booking without persisting anything.
+     * Call this to show a breakdown to the user before they confirm.
+     */
+    @Transactional(readOnly = true)
+    public FareBreakdown previewFare(Long carId,
+                                     double estimatedDistanceKm,
+                                     double estimatedDurationHours) {
+        Car car = carService.findById(carId);
+        validateUsageInputs(estimatedDistanceKm, estimatedDurationHours);
+        return fareCalculator.calculate(car, estimatedDistanceKm, estimatedDurationHours);
+    }
 
-        validateReservationRequest(reservation);
+    /**
+     * Confirms and persists a booking:
+     *  1. Validates all inputs
+     *  2. Checks car is not under maintenance
+     *  3. Checks for date conflicts
+     *  4. Calculates fare (auto — no manual entry)
+     *  5. Stores itemised fare breakdown on the reservation
+     */
+    public Reservation bookCar(Long carId, Long customerId,
+                               LocalDate startDate, LocalDate endDate,
+                               double estimatedDistanceKm, double estimatedDurationHours) {
 
-        Car car = getCarById(reservation.getCarId());
+        validateDates(startDate, endDate);
+        validateUsageInputs(estimatedDistanceKm, estimatedDurationHours);
+
+        Car car = carService.findById(carId);
+        Customer customer = customerService.findById(customerId);
 
         if (car.isUnderMaintenance()) {
-            throw new ValidationException("Car is under maintenance");
+            throw new ValidationException("Car " + carId + " is currently under maintenance");
         }
 
-        List<Reservation> conflicts = getActiveReservationsForCar(
-                reservation.getCarId(),
-                reservation.getStartDate(),
-                reservation.getEndDate()
-        );
-
+        List<Reservation> conflicts =
+                reservationRepository.findConflictingReservations(carId, startDate, endDate);
         if (!conflicts.isEmpty()) {
-            throw new BookingConflictException("Car already booked for selected dates");
+            throw new BookingConflictException(
+                    "Car " + carId + " is already booked for the selected dates");
         }
 
-        double fare = fareCalculator.calculateFare(
-                car,
-                reservation.getTotalDistanceKm(),
-                reservation.getDurationHours()
-        );
+        // Fare is calculated automatically — never entered manually
+        FareBreakdown fare = fareCalculator.calculate(car, estimatedDistanceKm, estimatedDurationHours);
 
-        reservation.setCalculatedFare(fare);
-        reservation.setStatus(ReservationStatus.ACTIVE);
+        Reservation reservation = new Reservation(car, customer, startDate, endDate,
+                estimatedDistanceKm, estimatedDurationHours);
 
-        saveReservation(reservation);
+        // Store all fare components for billing transparency
+        reservation.setBaseFareCharged(fare.getBaseFare());
+        reservation.setDistanceFare(fare.getDistanceFare());
+        reservation.setDurationFare(fare.getDurationFare());
+        reservation.setCategorySurcharge(fare.getCategorySurcharge());
+        reservation.setTotalFare(fare.getTotalFare());
+
+        return reservationRepository.save(reservation);
     }
 
-    private void validateReservationRequest(Reservation reservation) {
-        if (reservation == null) {
-            throw new ValidationException("Reservation must not be null");
+    /**
+     * Cancels a reservation. Allowed only if the booking start date is in the future.
+     * Reason is optional but recommended.
+     */
+    public Reservation cancelReservation(Long reservationId, String cancellationReason) {
+        Reservation reservation = findById(reservationId);
+
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            throw new ValidationException("Reservation " + reservationId + " is already cancelled");
+        }
+        if (reservation.getStatus() == ReservationStatus.COMPLETED) {
+            throw new ValidationException("Cannot cancel a completed reservation");
+        }
+        if (!reservation.getStartDate().isAfter(LocalDate.now())) {
+            throw new ValidationException("Cannot cancel a reservation that has already started");
         }
 
-        if (reservation.getCarId() <= 0) {
-            throw new ValidationException("Car ID must be positive");
-        }
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        reservation.setCancelledAt(LocalDateTime.now());
+        reservation.setCancellationReason(cancellationReason);
+        return reservationRepository.save(reservation);
+    }
 
-        if (reservation.getCustomerId() <= 0) {
-            throw new ValidationException("Customer ID must be positive");
+    /**
+     * Marks a reservation as completed (e.g. car has been returned).
+     */
+    public Reservation completeReservation(Long reservationId) {
+        Reservation reservation = findById(reservationId);
+        if (reservation.getStatus() != ReservationStatus.ACTIVE) {
+            throw new ValidationException("Only ACTIVE reservations can be marked complete");
         }
+        reservation.setStatus(ReservationStatus.COMPLETED);
+        return reservationRepository.save(reservation);
+    }
 
-        if (reservation.getStartDate().isBefore(LocalDate.now())) {
-            throw new ValidationException("Booking cannot start in the past");
+    @Transactional(readOnly = true)
+    public Reservation findById(Long reservationId) {
+        return reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Reservation not found with id: " + reservationId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Reservation> getReservationsByCustomer(Long customerId) {
+        return reservationRepository.findByCustomerIdOrderByCreatedAtDesc(customerId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Reservation> getReservationsByCar(Long carId) {
+        return reservationRepository.findByCarIdOrderByCreatedAtDesc(carId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Reservation> getAllReservations() {
+        return reservationRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public double getTotalRevenue() {
+        return reservationRepository.getTotalRevenue();
+    }
+
+    private void validateDates(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            throw new ValidationException("Start date and end date are required");
         }
-
-        if (!reservation.getEndDate().isAfter(reservation.getStartDate())) {
+        if (startDate.isBefore(LocalDate.now())) {
+            throw new ValidationException("Booking start date cannot be in the past");
+        }
+        if (!endDate.isAfter(startDate)) {
             throw new ValidationException("End date must be after start date");
         }
-
-        if (reservation.getTotalDistanceKm() <= 0) {
-            throw new ValidationException("Total distance (km) must be greater than zero");
-        }
-
-        if (reservation.getDurationHours() <= 0) {
-            throw new ValidationException("Duration (hours) must be greater than zero");
-        }
     }
 
-    public void cancelReservation(long reservationId) {
-
-        Reservation reservation = getReservationById(reservationId);
-
-        if (!reservation.getStartDate().isAfter(LocalDate.now())) {
-            throw new ValidationException("Cannot cancel after booking has started");
+    private void validateUsageInputs(double distanceKm, double durationHours) {
+        if (distanceKm <= 0) {
+            throw new ValidationException("Estimated distance must be greater than zero");
         }
-
-        if (reservationRepository != null) {
-            reservation.setStatus(ReservationStatus.CANCELLED);
-            reservationRepository.save(reservation);
-        } else {
-            reservationDao.cancelReservation(reservationId);
+        if (durationHours <= 0) {
+            throw new ValidationException("Estimated duration must be greater than zero");
         }
-    }
-
-    private Car getCarById(long carId) {
-        if (carRepository != null) {
-            return carRepository.findById(carId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Car not found"));
-        }
-        return carDao.getCarById(carId)
-                .orElseThrow(() -> new ResourceNotFoundException("Car not found"));
-    }
-
-    private List<Reservation> getActiveReservationsForCar(long carId,
-                                                          LocalDate startDate,
-                                                          LocalDate endDate) {
-        if (reservationRepository != null) {
-            return reservationRepository.findActiveReservationsForCarInRange(carId, startDate, endDate);
-        }
-        return reservationDao.getActiveReservationsForCar(carId, startDate, endDate);
-    }
-
-    private void saveReservation(Reservation reservation) {
-        if (reservationRepository != null) {
-            reservationRepository.save(reservation);
-        } else {
-            reservationDao.addReservation(reservation);
-        }
-    }
-
-    private Reservation getReservationById(long reservationId) {
-        if (reservationRepository != null) {
-            return reservationRepository.findById(reservationId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
-        }
-        return reservationDao.getReservationById(reservationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
     }
 }

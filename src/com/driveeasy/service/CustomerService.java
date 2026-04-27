@@ -1,81 +1,70 @@
 package com.driveeasy.service;
 
-import com.driveeasy.dao.CustomerDao;
-import com.driveeasy.dao.impl.CustomerDaoImpl;
+import com.driveeasy.exception.ResourceNotFoundException;
 import com.driveeasy.exception.ValidationException;
 import com.driveeasy.model.Customer;
 import com.driveeasy.repository.CustomerRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.regex.Pattern;
+import java.util.List;
 
 @Service
+@Transactional
 public class CustomerService {
 
-    private final CustomerDao customerDao;
     private final CustomerRepository customerRepository;
 
-    private static final Pattern EMAIL_PATTERN =
-            Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
-
-    private static final Pattern PHONE_PATTERN =
-            Pattern.compile("^[6-9][0-9]{9}$");
-
-    /**
-     * Default constructor for console Phase 1 usage (DAO-based).
-     */
-    public CustomerService() {
-        this.customerDao = new CustomerDaoImpl();
-        this.customerRepository = null;
-    }
-
-    /**
-     * Spring-managed constructor using JPA repository.
-     */
     public CustomerService(CustomerRepository customerRepository) {
         this.customerRepository = customerRepository;
-        this.customerDao = null;
     }
 
-    public void registerCustomer(Customer customer) {
-
-        if (!EMAIL_PATTERN.matcher(customer.getEmail()).matches()) {
-            throw new ValidationException("Invalid email format");
+    /**
+     * Registers a new customer after checking for email/phone uniqueness.
+     * Validation annotations on Customer handle format checks via @Valid at controller level;
+     * business-rule uniqueness checks are enforced here.
+     */
+    public Customer registerCustomer(String name, String email, String phone,
+                                     String drivingLicenseNumber) {
+        if (customerRepository.existsByEmail(email)) {
+            throw new ValidationException("A customer with email '" + email + "' already exists");
         }
-
-        if (!PHONE_PATTERN.matcher(customer.getPhone()).matches()) {
-            throw new ValidationException("Invalid phone number");
+        if (customerRepository.existsByPhone(phone)) {
+            throw new ValidationException("A customer with phone '" + phone + "' already exists");
         }
-
-        boolean emailExists = emailExists(customer.getEmail());
-        boolean phoneExists = phoneExists(customer.getPhone());
-
-        if (emailExists || phoneExists) {
-            throw new ValidationException("Customer with same email or phone already exists");
-        }
-
-        saveCustomer(customer);
+        Customer customer = new Customer(name, email, phone, drivingLicenseNumber);
+        return customerRepository.save(customer);
     }
 
-    private boolean emailExists(String email) {
-        if (customerRepository != null) {
-            return customerRepository.findByEmail(email).isPresent();
+    public Customer updateCustomer(Long customerId, String name, String phone,
+                                   String drivingLicenseNumber) {
+        Customer customer = findById(customerId);
+
+        // Allow phone update only if the new number doesn't belong to another customer
+        if (!customer.getPhone().equals(phone) && customerRepository.existsByPhone(phone)) {
+            throw new ValidationException("Phone number '" + phone + "' is already in use");
         }
-        return customerDao.getCustomerByEmail(email).isPresent();
+
+        customer.setName(name);
+        customer.setPhone(phone);
+        customer.setDrivingLicenseNumber(drivingLicenseNumber);
+        return customerRepository.save(customer);
     }
 
-    private boolean phoneExists(String phone) {
-        if (customerRepository != null) {
-            return customerRepository.findByPhone(phone).isPresent();
-        }
-        return customerDao.getCustomerByPhone(phone).isPresent();
+    @Transactional(readOnly = true)
+    public Customer findById(Long customerId) {
+        return customerRepository.findById(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + customerId));
     }
 
-    private void saveCustomer(Customer customer) {
-        if (customerRepository != null) {
-            customerRepository.save(customer);
-        } else {
-            customerDao.addCustomer(customer);
-        }
+    @Transactional(readOnly = true)
+    public Customer findByEmail(String email) {
+        return customerRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with email: " + email));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Customer> getAllCustomers() {
+        return customerRepository.findAll();
     }
 }

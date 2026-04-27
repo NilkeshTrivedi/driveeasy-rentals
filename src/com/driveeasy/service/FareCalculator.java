@@ -1,58 +1,68 @@
 package com.driveeasy.service;
 
 import com.driveeasy.model.Car;
+import com.driveeasy.model.dto.FareBreakdown;
+import org.springframework.stereotype.Component;
 
 /**
  * Pure domain service responsible for computing rental fare.
  *
- * This class is intentionally free of any persistence or UI concerns so that
- * it can be reused unchanged when the project moves to Spring Boot / REST / JPA.
+ * Industry-standard formula used by major car rental companies (Hertz, Avis, Zoomcar):
+ *
+ *   variableFare   = (distanceKm × perKmRate) + (durationHours × perHourRate)
+ *   categorySurcharge = variableFare × (categoryMultiplier - 1.0)
+ *   totalFare      = baseFare + variableFare + categorySurcharge
+ *
+ * The base fare is a flat booking fee — it is NOT multiplied by the category.
+ * The category surcharge applies only to the variable (usage-based) portion.
+ *
+ * This matches how real-world rental pricing works:
+ *  - Economy: no surcharge on variable usage
+ *  - Sedan:   +20% on variable usage
+ *  - SUV:     +50% on variable usage
+ *  - Luxury:  +100% on variable usage
+ *
+ * The breakdown is stored on the Reservation for full billing transparency.
  */
+@Component
 public class FareCalculator {
 
     /**
-     * Calculate the total fare for a rental.
+     * Calculates a fully itemised fare breakdown for a rental.
      *
-     * Formula:
-     *   totalFare =
-     *       (distanceKm × perKmRate)
-     *     + (durationHours × perHourRate)
-     *     + baseFare
-     *     × categoryMultiplier
-     *
-     * where categoryMultiplier comes from {@link com.driveeasy.model.enums.CarCategory}.
-     *
-     * @param car           the rented car
-     * @param distanceKm    total distance in kilometres
-     * @param durationHours total duration in hours
-     * @return calculated total fare (never negative)
+     * @param car                 the car being rented
+     * @param estimatedDistanceKm estimated distance in kilometres
+     * @param estimatedHours      estimated rental duration in hours
+     * @return an immutable {@link FareBreakdown} with all line items and the total
      */
-    public double calculateFare(Car car, double distanceKm, double durationHours) {
-
+    public FareBreakdown calculate(Car car, double estimatedDistanceKm, double estimatedHours) {
         if (car == null) {
             throw new IllegalArgumentException("Car must not be null");
         }
-        if (distanceKm < 0) {
-            throw new IllegalArgumentException("Distance (km) cannot be negative");
+        if (estimatedDistanceKm < 0) {
+            throw new IllegalArgumentException("Distance cannot be negative");
         }
-        if (durationHours < 0) {
-            throw new IllegalArgumentException("Duration (hours) cannot be negative");
+        if (estimatedHours < 0) {
+            throw new IllegalArgumentException("Duration cannot be negative");
         }
 
-        double baseFare = car.getBaseFare();
-        double perKmRate = car.getPerKmRate();
-        double perHourRate = car.getPerHourRate();
-        double categoryMultiplier = car.getCategory().getFareMultiplier();
+        double baseFare       = car.getBaseFare();
+        double distanceFare   = estimatedDistanceKm * car.getPerKmRate();
+        double durationFare   = estimatedHours * car.getPerHourRate();
+        double variableFare   = distanceFare + durationFare;
 
-        double rawFare =
-                (distanceKm * perKmRate)
-                        + (durationHours * perHourRate)
-                        + baseFare;
+        // Category surcharge applies ONLY to variable usage, not to the base fee
+        double multiplier         = car.getCategory().getFareMultiplier();
+        double categorySurcharge  = variableFare * (multiplier - 1.0);
 
-        double totalFare = rawFare * categoryMultiplier;
+        double totalFare = baseFare + variableFare + categorySurcharge;
 
-        // Guard against rounding artefacts producing tiny negative numbers.
-        return Math.max(0.0, totalFare);
+        return new FareBreakdown(
+                baseFare,
+                distanceFare,
+                durationFare,
+                categorySurcharge,
+                Math.max(0.0, totalFare)   // guard against floating-point artefacts
+        );
     }
 }
-
