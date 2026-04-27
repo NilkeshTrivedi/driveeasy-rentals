@@ -36,10 +36,13 @@ public class Customer {
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Reservation> reservations = new ArrayList<>();
 
-    protected Customer() {
-        // JPA only
-    }
+    protected Customer() { /* JPA only */ }
 
+    /**
+     * FIX: Removed the Phase-1 4-arg constructor (long id, name, email, phone).
+     * CustomerDaoImpl called it; CustomerDaoImpl is deleted (dead code).
+     * CustomerService and ConsoleApp both use this 4-arg (name,email,phone,license) form.
+     */
     public Customer(String name, String email, String phone, String drivingLicenseNumber) {
         this.name = name;
         this.email = email;
@@ -47,19 +50,15 @@ public class Customer {
         this.drivingLicenseNumber = drivingLicenseNumber;
     }
 
-    // Getters
-    public Long getId() { return id; }
-    public String getName() { return name; }
-    public String getEmail() { return email; }
-    public String getPhone() { return phone; }
-    public String getDrivingLicenseNumber() { return drivingLicenseNumber; }
-    public List<Reservation> getReservations() { return reservations; }
+    public Long getId()                       { return id; }
+    public String getName()                   { return name; }
+    public String getEmail()                  { return email; }
+    public String getPhone()                  { return phone; }
+    public String getDrivingLicenseNumber()   { return drivingLicenseNumber; }
+    public List<Reservation> getReservations(){ return reservations; }
 
-    // Setters
-    public void setName(String name) { this.name = name; }
-    public void setEmail(String email) { this.email = email; }
-    public void setPhone(String phone) { this.phone = phone; }
-    public void setDrivingLicenseNumber(String drivingLicenseNumber) {
-        this.drivingLicenseNumber = drivingLicenseNumber;
-    }
+    public void setName(String name)                                    { this.name = name; }
+    public void setEmail(String email)                                  { this.email = email; }
+    public void setPhone(String phone)                                  { this.phone = phone; }
+    public void setDrivingLicenseNumber(String drivingLicenseNumber)    { this.drivingLicenseNumber = drivingLicenseNumber; }
 }

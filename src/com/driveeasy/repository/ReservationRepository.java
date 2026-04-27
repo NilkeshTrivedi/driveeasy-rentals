@@ -13,22 +13,20 @@ import java.util.List;
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
-    // BUG FIX #4: Spring Data derived queries on @ManyToOne fields require underscore
-    // notation to traverse the association. "customerId" resolves to a field named
-    // "customerId" on Reservation — which doesn't exist (the field is "customer").
-    // "customer_Id" correctly traverses customer.id via the JPA association.
+    /**
+     * FIX: Spring Data derived queries on @ManyToOne associations require
+     * underscore notation to traverse the join.  The original names
+     * findByCustomerIdOrderByCreatedAtDesc / findByCarIdOrderByCreatedAtDesc
+     * looked for fields literally named "customerId" / "carId" on Reservation,
+     * which don't exist (the fields are "customer" and "car" objects).
+     * Spring Data threw PropertyReferenceException at application startup.
+     */
     List<Reservation> findByCustomer_IdOrderByCreatedAtDesc(Long customerId);
 
     List<Reservation> findByCar_IdOrderByCreatedAtDesc(Long carId);
 
     List<Reservation> findByStatus(ReservationStatus status);
 
-    /**
-     * Checks for ACTIVE reservations on a specific car that overlap
-     * the requested [startDate, endDate) window.
-     *
-     * Used to enforce booking conflict prevention before confirming a reservation.
-     */
     @Query("""
             SELECT r FROM Reservation r
             WHERE r.car.id = :carId
@@ -40,11 +38,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                                                   @Param("endDate") LocalDate endDate);
 
     /**
-     * Revenue report: sum of total fares for ACTIVE and COMPLETED reservations.
-     *
-     * BUG FIX #12: Returns Double (boxed) instead of double (primitive) so that
-     * a null result from Hibernate (before COALESCE takes effect on some dialects)
-     * does not cause a NullPointerException during auto-unboxing.
+     * FIX: Return type changed from double (primitive) to Double (boxed).
+     * COALESCE guarantees a non-null SQL result, but on some Hibernate/MySQL
+     * dialect combinations the query can still return null before COALESCE
+     * is applied, causing a NullPointerException during auto-unboxing.
+     * Using Double lets callers null-check safely.
      */
     @Query("""
             SELECT COALESCE(SUM(r.totalFare), 0.0) FROM Reservation r

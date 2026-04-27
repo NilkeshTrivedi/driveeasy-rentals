@@ -30,8 +30,8 @@ public class DashboardController {
         long totalCustomers = customerRepository.count();
         long activeBookings = reservationRepository.findByStatus(ReservationStatus.ACTIVE).size();
 
-        // BUG FIX #12: getTotalRevenue() returns Double (boxed); guard against null
-        // before assigning to a primitive double to prevent NullPointerException.
+        // FIX: getTotalRevenue() returns Double (boxed); null-guard before assigning
+        // to primitive double prevents NullPointerException on empty tables.
         Double revenueResult = reservationRepository.getTotalRevenue();
         double totalRevenue  = revenueResult != null ? revenueResult : 0.0;
 
