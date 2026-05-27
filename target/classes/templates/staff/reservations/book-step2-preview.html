@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fare Estimate & Confirm (Step 2) - DriveEasy Rentals</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .invoice-card {
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: var(--shadow-lg);
+            margin: 0 auto;
+            position: relative;
+        }
+        .invoice-header {
+            text-align: center;
+            border-bottom: 2px dashed var(--border-color);
+            padding-bottom: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .invoice-logo {
+            font-family: var(--font-heading);
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--accent-teal);
+            margin-bottom: 0.25rem;
+        }
+        .invoice-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        .invoice-total {
+            border-top: 2px dashed var(--border-color);
+            padding-top: 1.5rem;
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--success);
+            font-family: var(--font-heading);
+        }
+        .preview-layout {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <i class="fa-solid fa-car-side" style="color: var(--accent-teal); font-size: 1.75rem;"></i>
+            <h1>DriveEasy</h1>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="sidebar-menu-item">
+                <a th:href="@{/}"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a th:href="@{/admin/cars}"><i class="fa-solid fa-car"></i> Cars Directory</a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a th:href="@{/staff/customers}"><i class="fa-solid fa-users"></i> Customers</a>
+            </li>
+            <li class="sidebar-menu-item active">
+                <a th:href="@{/staff/reservations}"><i class="fa-solid fa-calendar-check"></i> Reservations</a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <p>&copy; 2026 DriveEasy Rentals</p>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+        <div class="header-container" style="margin-bottom: 2rem;">
+            <div class="header-title">
+                <h2>Estimate & Confirm Booking</h2>
+                <p>Step 2: Review itemized fare summary and assign the reservation to a customer.</p>
+            </div>
+            <div class="header-actions">
+                <a th:href="@{/staff/reservations/book(startDate=${startDate},endDate=${endDate})}" class="btn btn-secondary">
+                    <i class="fa-solid fa-arrow-left"></i> Change Selection
+                </a>
+            </div>
+        </div>
+
+        <div class="preview-layout">
+            <!-- Customer Assignment and Metadata -->
+            <div class="form-card" style="margin: 0; max-width: 100%;">
+                <h3 style="font-family: var(--font-heading); margin-bottom: 1.5rem; font-size: 1.25rem;">
+                    <i class="fa-solid fa-user-tag" style="color: var(--accent-teal);"></i> Assign Customer
+                </h3>
+                <form th:action="@{/staff/reservations/book/confirm}" method="POST">
+                    <!-- Hidden Parameters -->
+                    <input type="hidden" name="carId" th:value="${car.id}">
+                    <input type="hidden" name="startDate" th:value="${startDate}">
+                    <input type="hidden" name="endDate" th:value="${endDate}">
+                    <input type="hidden" name="estimatedDistanceKm" th:value="${estimatedDistanceKm}">
+                    <input type="hidden" name="estimatedDurationHours" th:value="${estimatedDurationHours}">
+
+                    <!-- Customer Select -->
+                    <div class="form-group">
+                        <label for="customerId">Select Customer</label>
+                        <select id="customerId" name="customerId" class="form-control" required>
+                            <option value="" disabled selected>Pick customer...</option>
+                            <option th:each="cust : ${customers}" th:value="${cust.id}" th:text="${cust.name + ' (' + cust.phone + ')'}">Rahul Sharma (9876543210)</option>
+                        </select>
+                        <div style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-secondary);">
+                            Not registered? <a th:href="@{/staff/customers/register}" style="color: var(--accent-teal); text-decoration: underline;" target="_blank">Register new customer first</a>.
+                        </div>
+                    </div>
+
+                    <!-- Rental Summary Info -->
+                    <div style="margin: 2rem 0; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+                        <h4 style="font-family: var(--font-heading); margin-bottom: 1rem; color: var(--text-secondary);">Rental Specs</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.875rem;">
+                            <div>
+                                <span style="color: var(--text-muted);">Start Date:</span>
+                                <div th:text="${#temporals.format(startDate, 'dd MMM yyyy')}" style="font-weight: 600;">26 May 2026</div>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted);">End Date:</span>
+                                <div th:text="${#temporals.format(endDate, 'dd MMM yyyy')}" style="font-weight: 600;">28 May 2026</div>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted);">Est. Distance:</span>
+                                <div th:text="${estimatedDistanceKm + ' km'}" style="font-weight: 600;">150.0 km</div>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted);">Est. Duration:</span>
+                                <div th:text="${estimatedDurationHours + ' hrs'}" style="font-weight: 600;">48.0 hrs</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 1rem;">
+                        <a th:href="@{/staff/reservations/book(startDate=${startDate},endDate=${endDate})}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, var(--success), #047857); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);">
+                            <i class="fa-solid fa-square-check"></i> Confirm Reservation
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Receipt Breakdown -->
+            <div class="invoice-card">
+                <div class="invoice-header">
+                    <div class="invoice-logo">DRIVEEASY RENTALS</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Estimated Fare Invoice</div>
+                </div>
+                
+                <div class="invoice-row" style="margin-bottom: 1.5rem;">
+                    <span style="font-weight: 700; color: var(--text-primary);" th:text="${car.model}">Honda City</span>
+                    <span class="badge badge-success" th:text="${car.category.displayName}">Sedan</span>
+                </div>
+                
+                <div class="invoice-row">
+                    <span style="color: var(--text-secondary);">Base Fare Charged:</span>
+                    <span th:text="${'₹' + #numbers.formatDecimal(fareBreakdown.baseFare, 1, 'COMMAS', 2, 'POINT')}">₹800.00</span>
+                </div>
+                <div class="invoice-row">
+                    <span style="color: var(--text-secondary);">Distance Fare:</span>
+                    <span th:text="${'₹' + #numbers.formatDecimal(fareBreakdown.distanceFare, 1, 'COMMAS', 2, 'POINT')}">₹1,800.00</span>
+                </div>
+                <div class="invoice-row">
+                    <span style="color: var(--text-secondary);">Duration Fare:</span>
+                    <span th:text="${'₹' + #numbers.formatDecimal(fareBreakdown.durationFare, 1, 'COMMAS', 2, 'POINT')}">₹3,360.00</span>
+                </div>
+                <div class="invoice-row" style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
+                    <span style="color: var(--text-secondary);" th:text="'Category Surcharge (' + ${car.category.displayName} + '):'">Category Surcharge:</span>
+                    <span th:text="${'₹' + #numbers.formatDecimal(fareBreakdown.categorySurcharge, 1, 'COMMAS', 2, 'POINT')}">₹1,032.00</span>
+                </div>
+                
+                <div class="invoice-total">
+                    <span>Grand Total:</span>
+                    <span th:text="${'₹' + #numbers.formatDecimal(fareBreakdown.totalFare, 1, 'COMMAS', 2, 'POINT')}">₹6,992.00</span>
+                </div>
+                
+                <div style="margin-top: 1.5rem; font-size: 0.7rem; color: var(--text-muted); text-align: center; font-style: italic;">
+                    Rates: Base ₹<span th:text="${car.baseFare}">800</span> | Km ₹<span th:text="${car.perKmRate}">12</span> | Hr ₹<span th:text="${car.perHourRate}">70</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

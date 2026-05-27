@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Directory - DriveEasy Rentals</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <i class="fa-solid fa-car-side" style="color: var(--accent-teal); font-size: 1.75rem;"></i>
+            <h1>DriveEasy</h1>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="sidebar-menu-item">
+                <a th:href="@{/}"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a th:href="@{/admin/cars}"><i class="fa-solid fa-car"></i> Cars Directory</a>
+            </li>
+            <li class="sidebar-menu-item active">
+                <a th:href="@{/staff/customers}"><i class="fa-solid fa-users"></i> Customers</a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a th:href="@{/staff/reservations}"><i class="fa-solid fa-calendar-check"></i> Reservations</a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <p>&copy; 2026 DriveEasy Rentals</p>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+        <div class="header-container">
+            <div class="header-title">
+                <h2>Customer Directory</h2>
+                <p>Register new customers, view driving records, and booking histories.</p>
+            </div>
+            <div class="header-actions">
+                <a th:href="@{/staff/customers/register}" class="btn btn-primary">
+                    <i class="fa-solid fa-user-plus"></i> Register Customer
+                </a>
+            </div>
+        </div>
+
+        <!-- Success Notification -->
+        <div th:if="${successMessage}" class="alert alert-success">
+            <i class="fa-solid fa-circle-check"></i>
+            <span th:text="${successMessage}">Operation successful</span>
+        </div>
+
+        <!-- Customers Directory -->
+        <div class="table-card">
+            <div class="table-header">
+                <h3>Registered Members</h3>
+            </div>
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email Address</th>
+                            <th>Phone Number</th>
+                            <th>Driving License</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="cust : ${customers}">
+                            <td th:text="${'#' + cust.id}">#1</td>
+                            <td>
+                                <div style="font-weight: 600;" th:text="${cust.name}">Rahul Sharma</div>
+                            </td>
+                            <td th:text="${cust.email}">rahul@example.com</td>
+                            <td th:text="${cust.phone}">9876543210</td>
+                            <td>
+                                <span th:if="${cust.drivingLicenseNumber}" th:text="${cust.drivingLicenseNumber}" style="font-family: monospace; font-size: 0.8rem; letter-spacing: 0.5px; background: rgba(255,255,255,0.03); padding: 0.25rem 0.5rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">DL-142011006789</span>
+                                <span th:unless="${cust.drivingLicenseNumber}" style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">No license added</span>
+                            </td>
+                            <td>
+                                <a th:href="@{/staff/customers/{id}(id=${cust.id})}" class="btn btn-secondary btn-icon" title="View details and bookings">
+                                    <i class="fa-solid fa-eye"></i> View Profile
+                                </a>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(customers)}">
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem 0;">
+                                <i class="fa-solid fa-users-slash" style="font-size: 2.5rem; margin-bottom: 0.5rem; display: block;"></i>
+                                No customers registered yet. Click register to add one.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

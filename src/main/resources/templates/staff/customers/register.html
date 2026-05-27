@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Customer - DriveEasy Rentals</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <i class="fa-solid fa-car-side" style="color: var(--accent-teal); font-size: 1.75rem;"></i>
+            <h1>DriveEasy</h1>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="sidebar-menu-item">
+                <a th:href="@{/}"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a th:href="@{/admin/cars}"><i class="fa-solid fa-car"></i> Cars Directory</a>
+            </li>
+            <li class="sidebar-menu-item active">
+                <a th:href="@{/staff/customers}"><i class="fa-solid fa-users"></i> Customers</a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a th:href="@{/staff/reservations}"><i class="fa-solid fa-calendar-check"></i> Reservations</a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <p>&copy; 2026 DriveEasy Rentals</p>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+        <div class="header-container" style="margin-bottom: 2rem;">
+            <div class="header-title">
+                <h2>Register New Customer</h2>
+                <p>Register a new member to allow booking and processing rental orders.</p>
+            </div>
+            <div class="header-actions">
+                <a th:href="@{/staff/customers}" class="btn btn-secondary">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Directory
+                </a>
+            </div>
+        </div>
+
+        <!-- Form Card -->
+        <div class="form-card">
+            <form th:action="@{/staff/customers/register}" method="POST">
+                <!-- Customer Name -->
+                <div class="form-group">
+                    <label for="name">Customer Full Name</label>
+                    <input type="text" id="name" name="name" class="form-control" placeholder="e.g. Rahul Sharma" required>
+                </div>
+
+                <!-- Email -->
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="e.g. rahul@example.com" required>
+                </div>
+
+                <!-- Phone (with pattern validation) -->
+                <div class="form-group">
+                    <label for="phone">Phone Number (10 digits)</label>
+                    <input type="tel" id="phone" name="phone" pattern="^[6-9][0-9]{9}$" class="form-control" placeholder="e.g. 9876543210" title="Must be a valid 10-digit Indian mobile number starting with 6-9." required>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; display: block;">10-digit Indian phone number starting with 6, 7, 8, or 9</span>
+                </div>
+
+                <!-- Driving License -->
+                <div class="form-group">
+                    <label for="drivingLicenseNumber">Driving License Number</label>
+                    <input type="text" id="drivingLicenseNumber" name="drivingLicenseNumber" class="form-control" placeholder="e.g. DL-142011006789 (Optional)">
+                </div>
+
+                <div class="form-actions">
+                    <button type="reset" class="btn btn-secondary">Reset</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-user-plus"></i> Complete Registration
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

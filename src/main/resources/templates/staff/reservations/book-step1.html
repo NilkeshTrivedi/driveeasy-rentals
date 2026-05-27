@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Booking (Step 1) - DriveEasy Rentals</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .dates-form {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+        .inline-inputs {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .inline-inputs input {
+            width: 80px;
+            padding: 0.375rem 0.5rem;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <i class="fa-solid fa-car-side" style="color: var(--accent-teal); font-size: 1.75rem;"></i>
+            <h1>DriveEasy</h1>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="sidebar-menu-item">
+                <a th:href="@{/}"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a th:href="@{/admin/cars}"><i class="fa-solid fa-car"></i> Cars Directory</a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a th:href="@{/staff/customers}"><i class="fa-solid fa-users"></i> Customers</a>
+            </li>
+            <li class="sidebar-menu-item active">
+                <a th:href="@{/staff/reservations}"><i class="fa-solid fa-calendar-check"></i> Reservations</a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <p>&copy; 2026 DriveEasy Rentals</p>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+        <div class="header-container" style="margin-bottom: 2rem;">
+            <div class="header-title">
+                <h2>Create New Booking</h2>
+                <p>Step 1: Check fleet availability for selected rental dates.</p>
+            </div>
+            <div class="header-actions">
+                <a th:href="@{/staff/reservations}" class="btn btn-secondary">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Reservations
+                </a>
+            </div>
+        </div>
+
+        <!-- Date Selection Form -->
+        <div class="dates-form">
+            <form th:action="@{/staff/reservations/book}" method="GET">
+                <div class="form-row" style="grid-template-columns: 1fr 1fr auto; align-items: end; gap: 1.5rem;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="startDate">Start Date</label>
+                        <input type="date" id="startDate" name="startDate" class="form-control" th:min="${today}" th:value="${startDate}" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="endDate">End Date</label>
+                        <input type="date" id="endDate" name="endDate" class="form-control" th:min="${startDate != null ? startDate : today}" th:value="${endDate}" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="height: 42px;">
+                        <i class="fa-solid fa-magnifying-glass"></i> Check Fleet Availability
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Available Cars List -->
+        <div th:if="${availableCars}" class="table-card">
+            <div class="table-header">
+                <h3>
+                    <i class="fa-solid fa-car-on" style="color: var(--accent-teal);"></i> 
+                    Available Vehicles for <span th:text="${#temporals.format(startDate, 'dd MMM yyyy')} + ' to ' + ${#temporals.format(endDate, 'dd MMM yyyy')}" style="color: var(--accent-teal);">26 May - 28 May</span>
+                </h3>
+            </div>
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Category</th>
+                            <th>Base Fare</th>
+                            <th>Per Km Rate</th>
+                            <th>Per Hour Rate</th>
+                            <th>Estimate Usage & Proceed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="car : ${availableCars}">
+                            <td>
+                                <div style="font-weight: 600;" th:text="${car.model}">Hyundai i10</div>
+                            </td>
+                            <td>
+                                <span class="badge badge-success" th:if="${car.category.name() == 'ECONOMY'}" th:text="${car.category.displayName}">Economy</span>
+                                <span class="badge badge-success" th:if="${car.category.name() == 'SEDAN'}" th:text="${car.category.displayName}">Sedan</span>
+                                <span class="badge badge-warning" th:if="${car.category.name() == 'SUV'}" th:text="${car.category.displayName}">SUV</span>
+                                <span class="badge badge-success" th:if="${car.category.name() == 'LUXURY'}" style="background-color: var(--accent-purple-glow); color: var(--accent-purple); border-color: rgba(139, 92, 246, 0.2);" th:text="${car.category.displayName}">Luxury</span>
+                            </td>
+                            <td th:text="${'₹' + #numbers.formatDecimal(car.baseFare, 1, 'COMMAS', 2, 'POINT')}">₹500.00</td>
+                            <td th:text="${'₹' + #numbers.formatDecimal(car.perKmRate, 1, 'COMMAS', 2, 'POINT')}">₹10.00</td>
+                            <td th:text="${'₹' + #numbers.formatDecimal(car.perHourRate, 1, 'COMMAS', 2, 'POINT')}">₹50.00</td>
+                            <td>
+                                <!-- Booking and Estimation Form -->
+                                <form th:action="@{/staff/reservations/book/fare-preview}" method="GET" style="margin:0;">
+                                    <input type="hidden" name="carId" th:value="${car.id}">
+                                    <input type="hidden" name="startDate" th:value="${startDate}">
+                                    <input type="hidden" name="endDate" th:value="${endDate}">
+                                    
+                                    <div class="inline-inputs">
+                                        <input type="number" step="0.1" min="1" name="estimatedDistanceKm" class="form-control" placeholder="Est. km" title="Estimated distance in km" required style="width: 100px;">
+                                        <input type="number" step="0.1" min="1" name="estimatedDurationHours" class="form-control" placeholder="Est. hrs" title="Estimated duration in hours" required style="width: 100px;">
+                                        <button type="submit" class="btn btn-primary" style="padding: 0.375rem 0.75rem; font-size: 0.8rem; box-shadow: none;">
+                                            <i class="fa-solid fa-calculator"></i> Preview Fare
+                                        </button>
+                                    </div>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(availableCars)}">
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem 0;">
+                                <i class="fa-solid fa-car-tunnel" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                No available vehicles found in the fleet for these dates.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ensure end date is not before start date -->
+    <script>
+        const startInput = document.getElementById('startDate');
+        const endInput = document.getElementById('endDate');
+        
+        startInput.addEventListener('change', function() {
+            if (this.value) {
+                endInput.min = this.value;
+                if (endInput.value && endInput.value < this.value) {
+                    endInput.value = this.value;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
