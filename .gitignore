@@ -27,3 +27,10 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+target/
+*.class
+.idea/
+.vscode/
+*.log
+
