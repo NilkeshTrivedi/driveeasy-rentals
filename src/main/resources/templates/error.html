@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - DriveEasy Rentals</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-brand">
+        <i class="fa-solid fa-car-side" style="color: var(--accent-teal); font-size: 1.75rem;"></i>
+        <h1>DriveEasy</h1>
+    </div>
+    <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+            <a th:href="@{/}"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
+        </li>
+        <li class="sidebar-menu-item">
+            <a th:href="@{/admin/cars}"><i class="fa-solid fa-car"></i> Cars Directory</a>
+        </li>
+        <li class="sidebar-menu-item">
+            <a th:href="@{/staff/customers}"><i class="fa-solid fa-users"></i> Customers</a>
+        </li>
+        <li class="sidebar-menu-item">
+            <a th:href="@{/staff/reservations}"><i class="fa-solid fa-calendar-check"></i> Reservations</a>
+        </li>
+    </ul>
+    <div class="sidebar-footer">
+        <p>&copy; 2026 DriveEasy Rentals</p>
+    </div>
+</div>
+
+<div class="main-wrapper">
+    <div style="display:flex; flex-direction:column; align-items:center;
+                    justify-content:center; min-height:60vh; text-align:center;">
+
+        <i class="fa-solid fa-circle-exclamation"
+           style="font-size:5rem; color:var(--danger); margin-bottom:1.5rem;"></i>
+
+        <h2 style="font-family:var(--font-heading); font-size:2rem; margin-bottom:0.75rem;"
+            th:text="${errorTitle} ?: 'Something Went Wrong'">
+            Something Went Wrong
+        </h2>
+
+        <p style="color:var(--text-secondary); max-width:500px;
+                      margin-bottom:2rem; font-size:1rem; line-height:1.6;"
+           th:text="${errorMessage} ?: 'An unexpected error occurred. Please try again.'">
+            An unexpected error occurred.
+        </p>
+
+        <div style="display:flex; gap:1rem;">
+            <a th:href="@{/}" class="btn btn-primary">
+                <i class="fa-solid fa-house"></i> Go to Dashboard
+            </a>
+            <button onclick="history.back()" class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Go Back
+            </button>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
