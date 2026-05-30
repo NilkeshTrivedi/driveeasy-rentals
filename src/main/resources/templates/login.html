@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - DriveEasy Rentals</title>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f5f6fa 0%, #eef2ff 100%);
+        }
+        .login-wrapper {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+        .login-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(79,70,229,0.08);
+        }
+        .login-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .login-logo-icon {
+            width: 44px; height: 44px;
+            background: var(--accent);
+            border-radius: var(--radius-lg);
+            display: flex; align-items: center;
+            justify-content: center;
+            color: white; font-size: 20px;
+        }
+        .login-logo-text h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.4px;
+        }
+        .login-logo-text span {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .login-title {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .login-title h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .login-title p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 11px;
+            font-size: 14px;
+            font-weight: 600;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 8px;
+        }
+        .login-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+        .login-divider {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 12px;
+            color: var(--text-muted);
+            position: relative;
+        }
+        .login-divider::before, .login-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 42%;
+            height: 1px;
+            background: var(--border);
+        }
+        .login-divider::before { left: 0; }
+        .login-divider::after { right: 0; }
+        .demo-credentials {
+            background: var(--accent-light);
+            border: 1px solid #c7d2fe;
+            border-radius: var(--radius-md);
+            padding: 14px;
+            margin-top: 20px;
+        }
+        .demo-credentials p {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .demo-cred-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        .demo-cred-row span:first-child { color: var(--text-muted); }
+        .demo-cred-row code {
+            background: white;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: var(--accent);
+            border: 1px solid #c7d2fe;
+        }
+    </style>
+</head>
+<body>
+<div class="login-wrapper">
+    <div class="login-card">
+
+        <!-- Logo -->
+        <div class="login-logo">
+            <div class="login-logo-icon">
+                <i class="fa-solid fa-car-side"></i>
+            </div>
+            <div class="login-logo-text">
+                <h1>DriveEasy</h1>
+                <span>Rental Management System</span>
+            </div>
+        </div>
+
+        <!-- Title -->
+        <div class="login-title">
+            <h2>Welcome back</h2>
+            <p>Sign in to your account to continue</p>
+        </div>
+
+        <!-- Error / Logout Messages -->
+        <div th:if="${errorMessage}"
+             class="alert alert-danger"
+             style="background:#fee2e2;color:#991b1b;
+                        border:1px solid #fca5a5;border-radius:8px;
+                        padding:10px 14px;margin-bottom:18px;
+                        font-size:13px;display:flex;
+                        align-items:center;gap:8px;">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span th:text="${errorMessage}">Error</span>
+        </div>
+
+        <div th:if="${logoutMessage}"
+             class="alert alert-success"
+             style="background:var(--success-bg);color:var(--success-text);
+                        border:1px solid #86efac;border-radius:8px;
+                        padding:10px 14px;margin-bottom:18px;
+                        font-size:13px;display:flex;
+                        align-items:center;gap:8px;">
+            <i class="fa-solid fa-circle-check"></i>
+            <span th:text="${logoutMessage}">Logged out</span>
+        </div>
+
+        <!-- Login Form -->
+        <!-- NOTE: action="/login" is processed by Spring Security,
+             NOT by our controller. Spring handles authentication. -->
+        <form th:action="@{/login}" method="POST">
+
+            <div class="form-group">
+                <label for="username">Username</label>
+                <div style="position:relative;">
+                    <i class="fa-solid fa-user"
+                       style="position:absolute;left:12px;top:50%;
+                                  transform:translateY(-50%);
+                                  color:var(--text-muted);font-size:13px;"></i>
+                    <input type="text"
+                           id="username"
+                           name="username"
+                           class="form-control"
+                           style="padding-left:34px;"
+                           placeholder="Enter your username"
+                           required autofocus>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div style="position:relative;">
+                    <i class="fa-solid fa-lock"
+                       style="position:absolute;left:12px;top:50%;
+                                  transform:translateY(-50%);
+                                  color:var(--text-muted);font-size:13px;"></i>
+                    <input type="password"
+                           id="password"
+                           name="password"
+                           class="form-control"
+                           style="padding-left:34px;"
+                           placeholder="Enter your password"
+                           required>
+                </div>
+            </div>
+
+            <!-- CSRF token — Spring Security requires this on every form POST
+                 Thymeleaf adds it automatically with th:action -->
+            <button type="submit" class="login-btn">
+                <i class="fa-solid fa-right-to-bracket"></i>
+                Sign In
+            </button>
+        </form>
+
+        <!-- Demo credentials box for testing -->
+        <div class="demo-credentials">
+            <p>Demo Credentials</p>
+            <div class="demo-cred-row">
+                <span>Admin login</span>
+                <div style="display:flex;gap:6px;">
+                    <code>admin</code>
+                    <code>admin123</code>
+                </div>
+            </div>
+            <div class="demo-cred-row">
+                <span>Staff login</span>
+                <div style="display:flex;gap:6px;">
+                    <code>staff</code>
+                    <code>staff123</code>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+</body>
+</html>
