@@ -32,3 +32,17 @@ WHERE NOT EXISTS (SELECT 1 FROM customer WHERE id = 2);
 INSERT INTO reservation (id, car_id, customer_id, start_date, end_date, estimated_distance_km, estimated_duration_hours, base_fare_charged, distance_fare, duration_fare, category_surcharge, total_fare, status, created_at)
 SELECT 1, 2, 1, '2026-05-26', '2026-05-28', 150.0, 48.0, 800.0, 1800.0, 3360.0, 1032.0, 6992.0, 'ACTIVE', NOW()
 WHERE NOT EXISTS (SELECT 1 FROM reservation WHERE id = 1);
+
+-- Seed Users
+-- admin123 and staff123 hashed with BCrypt strength 12
+INSERT INTO users (username, password, role, full_name, enabled)
+SELECT 'admin',
+       '$2a$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+       'ADMIN', 'System Administrator', true
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
+
+INSERT INTO users (username, password, role, full_name, enabled)
+SELECT 'staff',
+       '$2a$12$tT3HAHb9JhfZ5JkbzFGqNeIp0wTWTnYpPBnSSSPKFCFbk/0ZLG.fS',
+       'STAFF', 'Staff Member', true
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'staff');

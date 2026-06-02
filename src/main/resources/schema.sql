@@ -1,9 +1,8 @@
--- Drop tables if they exist to start clean
 DROP TABLE IF EXISTS reservation;
 DROP TABLE IF EXISTS customer;
 DROP TABLE IF EXISTS car;
+DROP TABLE IF EXISTS users;
 
--- Create car table
 CREATE TABLE car (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     model VARCHAR(100) NOT NULL,
@@ -14,7 +13,6 @@ CREATE TABLE car (
     under_maintenance BOOLEAN NOT NULL DEFAULT FALSE
 );
 
--- Create customer table
 CREATE TABLE customer (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -23,7 +21,6 @@ CREATE TABLE customer (
     driving_license_number VARCHAR(20)
 );
 
--- Create reservation table
 CREATE TABLE reservation (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     car_id BIGINT NOT NULL,
@@ -43,4 +40,13 @@ CREATE TABLE reservation (
     cancellation_reason VARCHAR(255),
     FOREIGN KEY (car_id) REFERENCES car(id),
     FOREIGN KEY (customer_id) REFERENCES customer(id)
+);
+
+CREATE TABLE users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL UNIQUE,
+    role VARCHAR(10) NOT NULL,
+    full_name VARCHAR(100),
+    enabled BOOLEAN NOT NULL DEFAULT TRUE
 );

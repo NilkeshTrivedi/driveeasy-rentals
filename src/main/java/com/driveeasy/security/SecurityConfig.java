@@ -2,42 +2,55 @@ package com.driveeasy.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * TWO security filter chains, evaluated by @Order:
+ *
+ *   Chain 1 (@Order(1)) — matches /api/** only
+ *     - Stateless (no session, no CSRF cookies)
+ *     - JWT filter runs before UsernamePasswordAuthenticationFilter
+ *     - Returns 401/403 JSON, never redirects to login page
+ *
+ *   Chain 2 (@Order(2)) — matches everything else (Thymeleaf MVC)
+ *     - Session-based (Phase 2 behaviour, unchanged)
+ *     - Form login + logout work exactly as before
+ *
+ * Spring Security picks the FIRST chain whose requestMatcher matches.
+ * Because Chain 1 matches /api/** specifically, all other URLs fall through
+ * to Chain 2. The two chains share the same AuthenticationProvider and
+ * PasswordEncoder beans.
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     private final UserDetailsServiceImpl userDetailsService;
+    private final JwtAuthFilter jwtAuthFilter;
 
-    public SecurityConfig(UserDetailsServiceImpl userDetailsService) {
+    public SecurityConfig(UserDetailsServiceImpl userDetailsService,
+                          JwtAuthFilter jwtAuthFilter) {
         this.userDetailsService = userDetailsService;
+        this.jwtAuthFilter = jwtAuthFilter;
     }
 
-    /*
-     * BCryptPasswordEncoder is the industry standard for hashing passwords.
-     * Strength 12 means 2^12 = 4096 hashing rounds — slow enough to be
-     * secure against brute force, fast enough for login.
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
     }
 
-    /*
-     * DaoAuthenticationProvider connects:
-     *   - our UserDetailsService (loads user from DB)
-     *   - our PasswordEncoder (verifies BCrypt hash)
-     * Spring Security uses this during every login attempt.
-     */
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -52,57 +65,89 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    /*
-     * After successful login, redirect based on role:
-     *   ADMIN → /admin/cars
-     *   STAFF → /staff/reservations
-     *   anyone else → /
-     */
+    // ── Chain 1: REST API (stateless, JWT) ──────────────────────────────────
+
     @Bean
-    public AuthenticationSuccessHandler successHandler() {
-        return (request, response, authentication) -> {
-            boolean isAdmin = authentication.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-            if (isAdmin) {
-                response.sendRedirect("/admin/cars");
-            } else {
-                response.sendRedirect("/staff/reservations");
-            }
-        };
+    @Order(1)
+    public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
+        http
+                // Only this chain handles /api/** requests
+                .securityMatcher("/api/**")
+                .authenticationProvider(authenticationProvider())
+
+                // Stateless — no HttpSession, no CSRF tokens needed
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(AbstractHttpConfigurer::disable)
+
+                .authorizeHttpRequests(auth -> auth
+                        // Auth endpoints — public (login, register)
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+
+                        // Swagger/OpenAPI — public
+                        .requestMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/api-docs/**"
+                        ).permitAll()
+
+                        // Admin-only API routes
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+
+                        // Staff + Admin routes
+                        .requestMatchers("/api/v1/staff/**").hasAnyRole("ADMIN", "STAFF")
+
+                        // Everything else under /api/** requires authentication
+                        .anyRequest().authenticated()
+                )
+
+                // JWT filter runs before Spring's username/password filter
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+
+                // Return 401 JSON on missing/invalid auth — never redirect
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(401);
+                            response.setContentType("application/json");
+                            response.getWriter().write(
+                                    "{\"error\":\"Unauthorized\",\"message\":\"" +
+                                            authException.getMessage() + "\"}"
+                            );
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(403);
+                            response.setContentType("application/json");
+                            response.getWriter().write(
+                                    "{\"error\":\"Forbidden\",\"message\":\"" +
+                                            accessDeniedException.getMessage() + "\"}"
+                            );
+                        })
+                );
+
+        return http.build();
     }
 
-    /*
-     * THE MAIN SECURITY RULEBOOK
-     * This defines what URLs are public, what requires which role,
-     * and how login/logout works.
-     */
+    // ── Chain 2: MVC / Thymeleaf (session-based, Phase 2 unchanged) ─────────
+
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    @Order(2)
+    public SecurityFilterChain mvcFilterChain(HttpSecurity http) throws Exception {
         http
                 .authenticationProvider(authenticationProvider())
 
                 .authorizeHttpRequests(auth -> auth
-                        // Public resources — no login needed
                         .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
                         .requestMatchers("/login", "/access-denied").permitAll()
-
-                        // Admin-only routes
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-
-                        // Staff + Admin routes
                         .requestMatchers("/staff/**").hasAnyRole("ADMIN", "STAFF")
-
-                        // Dashboard — both roles
                         .requestMatchers("/").hasAnyRole("ADMIN", "STAFF")
-
-                        // Everything else requires login
                         .anyRequest().authenticated()
                 )
 
                 .formLogin(form -> form
-                        .loginPage("/login")           // our custom login page
-                        .loginProcessingUrl("/login")  // Spring processes POST to this URL
-                        .successHandler(successHandler())
+                        .loginPage("/login")
+                        .loginProcessingUrl("/login")
+                        .successHandler(mvcSuccessHandler())
                         .failureUrl("/login?error=true")
                         .permitAll()
                 )
@@ -120,5 +165,14 @@ public class SecurityConfig {
                 );
 
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationSuccessHandler mvcSuccessHandler() {
+        return (request, response, authentication) -> {
+            boolean isAdmin = authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+            response.sendRedirect(isAdmin ? "/admin/cars" : "/staff/reservations");
+        };
     }
 }
