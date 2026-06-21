@@ -30,8 +30,6 @@ public class DashboardController {
         long totalCustomers = customerRepository.count();
         long activeBookings = reservationRepository.findByStatus(ReservationStatus.ACTIVE).size();
 
-        // FIX: getTotalRevenue() returns Double (boxed); null-guard before assigning
-        // to primitive double prevents NullPointerException on empty tables.
         Double revenueResult = reservationRepository.getTotalRevenue();
         double totalRevenue  = revenueResult != null ? revenueResult : 0.0;
 
@@ -41,7 +39,7 @@ public class DashboardController {
         model.addAttribute("activeBookings", activeBookings);
         model.addAttribute("totalRevenue", totalRevenue);
         model.addAttribute("recentReservations",
-                reservationRepository.findByStatus(ReservationStatus.ACTIVE));
+                reservationRepository.findByStatusWithDetails(ReservationStatus.ACTIVE));
 
         return "dashboard";
     }

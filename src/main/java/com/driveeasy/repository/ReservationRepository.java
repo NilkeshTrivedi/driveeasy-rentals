@@ -13,14 +13,6 @@ import java.util.List;
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
-    /**
-     * FIX: Spring Data derived queries on @ManyToOne associations require
-     * underscore notation to traverse the join.  The original names
-     * findByCustomerIdOrderByCreatedAtDesc / findByCarIdOrderByCreatedAtDesc
-     * looked for fields literally named "customerId" / "carId" on Reservation,
-     * which don't exist (the fields are "customer" and "car" objects).
-     * Spring Data threw PropertyReferenceException at application startup.
-     */
     List<Reservation> findByCustomer_IdOrderByCreatedAtDesc(Long customerId);
 
     List<Reservation> findByCar_IdOrderByCreatedAtDesc(Long carId);
@@ -37,13 +29,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                                                   @Param("startDate") LocalDate startDate,
                                                   @Param("endDate") LocalDate endDate);
 
-    /**
-     * FIX: Return type changed from double (primitive) to Double (boxed).
-     * COALESCE guarantees a non-null SQL result, but on some Hibernate/MySQL
-     * dialect combinations the query can still return null before COALESCE
-     * is applied, causing a NullPointerException during auto-unboxing.
-     * Using Double lets callers null-check safely.
-     */
     @Query("""
             SELECT COALESCE(SUM(r.totalFare), 0.0) FROM Reservation r
             WHERE r.status IN (
@@ -52,4 +37,13 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             )
             """)
     Double getTotalRevenue();
+
+    @Query("""
+        SELECT r FROM Reservation r
+        JOIN FETCH r.car
+        JOIN FETCH r.customer
+        WHERE r.status = :status
+        """)
+    List<Reservation> findByStatusWithDetails(@Param("status") ReservationStatus status);
+
 }
